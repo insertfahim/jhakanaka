@@ -1,0 +1,401 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with BRACU-specific fields
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  studentId     String    @unique
+  image         String?
+  emailVerified DateTime?
+  isVerified    Boolean   @default(false)
+
+  // Profile Information
+  bio         String?
+  avatar      String?
+  department  String?
+  year        Int?
+
+  // Online Status
+  isOnline    Boolean @default(false)
+  lastSeen    DateTime @default(now())
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  studyGroups     StudyGroupMember[]
+  ownedGroups     StudyGroup[]
+  messages        Message[]
+  forumPosts      ForumPost[]
+  forumReplies    ForumReply[]
+  calendarEvents  CalendarEvent[]
+  eventRSVPs      EventRSVP[]
+  notifications   Notification[]
+  sentPolls       Poll[]
+  pollVotes       PollVote[]
+  tags            UserTag[]
+  sentConnections     Connection[] @relation("ConnectionSender")
+  receivedConnections Connection[] @relation("ConnectionReceiver")
+
+  @@map("users")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Study Group Models
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  courseCode  String
+  courseName  String
+  maxMembers  Int      @default(50)
+  isPrivate   Boolean  @default(false)
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+
+  // Group Settings
+  allowAnonymous Boolean @default(true)
+  tags          String[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  members     StudyGroupMember[]
+  messages    Message[]
+  forumPosts  ForumPost[]
+  calendarEvents CalendarEvent[]
+  polls       Poll[]
+
+  @@map("study_groups")
+}
+
+model StudyGroupMember {
+  id        String @id @default(cuid())
+  userId    String
+  groupId   String
+  role      MemberRole @default(MEMBER)
+  joinedAt  DateTime   @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("study_group_members")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// Chat System
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  groupId   String
+  type      MessageType @default(TEXT)
+
+  // File attachments
+  fileUrl   String?
+  fileName  String?
+  fileSize  Int?
+
+  // Message metadata
+  isPinned    Boolean @default(false)
+  isUrgent    Boolean @default(false)
+  urgentUntil DateTime?
+
+  // Threading
+  parentMessageId String?
+  parentMessage   Message? @relation("MessageThreads", fields: [parentMessageId], references: [id])
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  replies  Message[] @relation("MessageThreads")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  FILE
+  IMAGE
+  SYSTEM
+}
+
+// Forum System
+model ForumPost {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  isAnonymous Boolean  @default(false)
+  userId      String?
+  groupId     String
+
+  // Post metadata
+  tags        String[]
+  isResolved  Boolean  @default(false)
+  isUrgent    Boolean  @default(false)
+  urgentUntil DateTime?
+
+  // Vote tracking
+  upvotes     Int @default(0)
+  downvotes   Int @default(0)
+
+  // Relations
+  user     User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  group    StudyGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  replies  ForumReply[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("forum_posts")
+}
+
+model ForumReply {
+  id        String @id @default(cuid())
+  content   String
+  isAnonymous Boolean @default(false)
+  userId    String?
+  postId    String
+
+  // Vote tracking
+  upvotes   Int @default(0)
+  downvotes Int @default(0)
+
+  // Relations
+  user User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  post ForumPost  @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("forum_replies")
+}
+
+// Calendar System
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  isVirtual   Boolean  @default(false)
+  meetingLink String?
+
+  userId    String
+  groupId   String
+
+  // Relations
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  rsvps    EventRSVP[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("calendar_events")
+}
+
+model EventRSVP {
+  id       String @id @default(cuid())
+  userId   String
+  eventId  String
+  status   RSVPStatus
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@map("event_rsvps")
+}
+
+enum RSVPStatus {
+  GOING
+  MAYBE
+  NOT_GOING
+}
+
+// Polling System
+model Poll {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  type        PollType
+  isAnonymous Boolean  @default(false)
+  expiresAt   DateTime?
+
+  userId    String
+  groupId   String
+
+  // Relations
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group    StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  options  PollOption[]
+  votes    PollVote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("polls")
+}
+
+model PollOption {
+  id     String @id @default(cuid())
+  text   String
+  pollId String
+
+  poll  Poll      @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id       String @id @default(cuid())
+  userId   String
+  pollId   String
+  optionId String
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pollId])
+  @@map("poll_votes")
+}
+
+enum PollType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+  YES_NO
+}
+
+// Notification System
+model Notification {
+  id        String @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean @default(false)
+
+  // Metadata
+  relatedId   String? // ID of related entity (group, event, etc.)
+  relatedType String? // Type of related entity
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  GROUP_INVITATION
+  MEETING_REMINDER
+  NEW_MESSAGE
+  FORUM_ACTIVITY
+  URGENT_HELP
+  POLL_CREATED
+  EVENT_CREATED
+}
+
+// User Tags and Search
+model UserTag {
+  id     String @id @default(cuid())
+  userId String
+  tag    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tag])
+  @@map("user_tags")
+}
+
+// User Connections
+model Connection {
+  id         String @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     ConnectionStatus @default(PENDING)
+
+  sender   User @relation("ConnectionSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ConnectionReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([senderId, receiverId])
+  @@map("connections")
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  BLOCKED
+}
