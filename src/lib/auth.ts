@@ -111,12 +111,37 @@ export const authOptions: NextAuthOptions = {
                         };
                     } else {
                         // Sign in process
-                        const user = await prisma.user.findUnique({
+                        let user = await prisma.user.findUnique({
                             where: { email },
                         });
 
                         if (!user) {
-                            throw new Error("No user found with this email");
+                            // For demo purposes, create user if not exists
+                            const studentId = Math.floor(
+                                10000000 + Math.random() * 90000000
+                            ).toString();
+                            const name = email
+                                .split("@")[0]
+                                .replace(/[^a-zA-Z ]/g, " ")
+                                .trim();
+                            user = await prisma.user.create({
+                                data: {
+                                    email,
+                                    name: name || "Demo User",
+                                    studentId,
+                                    isVerified: true,
+                                },
+                            });
+
+                            // Create account for NextAuth
+                            await prisma.account.create({
+                                data: {
+                                    userId: user.id,
+                                    type: "credentials",
+                                    provider: "credentials",
+                                    providerAccountId: user.id,
+                                },
+                            });
                         }
 
                         // For demo purposes, we'll skip password verification
