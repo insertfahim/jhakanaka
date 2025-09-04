@@ -85,7 +85,44 @@ export async function GET(
             },
         });
 
-        return NextResponse.json(events);
+        // Add user RSVP status for each event
+        const eventsWithUserRsvp = await Promise.all(
+            events.map(async (event) => {
+                const userRsvp = await prisma.eventRSVP.findUnique({
+                    where: {
+                        userId_eventId: {
+                            userId: session.user.id,
+                            eventId: event.id,
+                        },
+                    },
+                });
+
+                // Map backend status to frontend status
+                let frontendStatus = null;
+                if (userRsvp) {
+                    switch (userRsvp.status) {
+                        case "GOING":
+                            frontendStatus = "ATTENDING";
+                            break;
+                        case "MAYBE":
+                            frontendStatus = "MAYBE";
+                            break;
+                        case "NOT_GOING":
+                            frontendStatus = "NOT_ATTENDING";
+                            break;
+                    }
+                }
+
+                return {
+                    ...event,
+                    userRsvp: frontendStatus
+                        ? { status: frontendStatus }
+                        : null,
+                };
+            })
+        );
+
+        return NextResponse.json(eventsWithUserRsvp);
     } catch (error) {
         console.error("Error fetching calendar events:", error);
         return NextResponse.json(

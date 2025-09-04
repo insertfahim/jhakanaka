@@ -86,7 +86,19 @@ export async function POST(
                     status,
                 },
             });
-            return NextResponse.json(rsvp);
+
+            // Map backend status to frontend status for response
+            const frontendStatus =
+                status === "GOING"
+                    ? "ATTENDING"
+                    : status === "NOT_GOING"
+                    ? "NOT_ATTENDING"
+                    : status;
+
+            return NextResponse.json({
+                ...rsvp,
+                status: frontendStatus,
+            });
         } else {
             // Create new RSVP
             const rsvp = await prisma.eventRSVP.create({
@@ -96,7 +108,22 @@ export async function POST(
                     status,
                 },
             });
-            return NextResponse.json(rsvp, { status: 201 });
+
+            // Map backend status to frontend status for response
+            const frontendStatus =
+                status === "GOING"
+                    ? "ATTENDING"
+                    : status === "NOT_GOING"
+                    ? "NOT_ATTENDING"
+                    : status;
+
+            return NextResponse.json(
+                {
+                    ...rsvp,
+                    status: frontendStatus,
+                },
+                { status: 201 }
+            );
         }
     } catch (error) {
         console.error("Error managing RSVP:", error);

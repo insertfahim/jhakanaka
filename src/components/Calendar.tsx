@@ -126,6 +126,18 @@ export default function Calendar({ groupId, groupName }: CalendarProps) {
         fetchEvents();
     }, [fetchEvents]);
 
+    // Update selectedEvent when events are refreshed and selectedEvent exists
+    useEffect(() => {
+        if (selectedEvent) {
+            const updatedEvent = events.find(
+                (event) => event.id === selectedEvent.id
+            );
+            if (updatedEvent) {
+                setSelectedEvent(updatedEvent);
+            }
+        }
+    }, [events, selectedEvent?.id]);
+
     const handleCreateEvent = async () => {
         try {
             const response = await fetch(`/api/groups/${groupId}/calendar`, {
@@ -821,7 +833,12 @@ export default function Calendar({ groupId, groupName }: CalendarProps) {
                                                         rsvp.status
                                                     )}`}
                                                 >
-                                                    {rsvp.status.toLowerCase()}
+                                                    {rsvp.status === "ATTENDING"
+                                                        ? "Attending"
+                                                        : rsvp.status ===
+                                                          "NOT_ATTENDING"
+                                                        ? "Not Attending"
+                                                        : rsvp.status.toLowerCase()}
                                                 </Badge>
                                             </div>
                                         ))}
