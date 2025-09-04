@@ -170,17 +170,11 @@ export default function AvatarSelector({
                 </div>
             </div>
 
-            {/* Custom Upload */}
-            <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                    Or Upload Your Own
-                </h4>
-                <div className="flex items-center space-x-3">
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploading}
+            {/* Custom Upload has been disabled for Vercel deployment */}
+        </div>
+    );
+}
+ding}
                         className="flex items-center space-x-2"
                     >
                         <Camera className="w-4 h-4" />
