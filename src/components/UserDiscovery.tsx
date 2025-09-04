@@ -119,6 +119,9 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                             : user
                     )
                 );
+
+                // Optionally refresh the data to ensure consistency
+                // await fetchUsers();
             }
         } catch (error) {
             console.error("Error sending connection request:", error);
@@ -140,6 +143,9 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                             : user
                     )
                 );
+
+                // Optionally refresh the data to ensure consistency
+                // await fetchUsers();
             }
         } catch (error) {
             console.error("Error canceling connection request:", error);

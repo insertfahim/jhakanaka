@@ -31,6 +31,12 @@ import {
 interface PollOption {
     id: string;
     text: string;
+    votes: Array<{
+        id: string;
+        userId: string;
+        pollId: string;
+        optionId: string;
+    }>;
     _count: {
         votes: number;
     };
@@ -675,7 +681,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {poll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(poll) > 0
-                                                ? (option.votes /
+                                                ? (option._count.votes /
                                                       getTotalVotes(poll)) *
                                                   100
                                                 : 0;
@@ -690,7 +696,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option.votes} (
+                                                        {option._count.votes} (
                                                         {percentage.toFixed(1)}
                                                         %)
                                                     </span>
@@ -763,7 +769,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {selectedPoll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(selectedPoll) > 0
-                                                ? (option.votes /
+                                                ? (option._count.votes /
                                                       getTotalVotes(
                                                           selectedPoll
                                                       )) *
@@ -780,7 +786,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option.votes} (
+                                                        {option._count.votes} (
                                                         {percentage.toFixed(1)}
                                                         %)
                                                     </span>

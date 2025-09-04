@@ -132,8 +132,8 @@ export async function GET(request: NextRequest) {
                             select: {
                                 name: true,
                                 courseCode: true,
-                            }
-                        }
+                            },
+                        },
                     },
                     take: 5, // Limit to prevent too much data
                 },
@@ -182,20 +182,18 @@ export async function GET(request: NextRequest) {
                         conn.receiverId === session.user.id)
             );
 
-            let connectionStatus: "none" | "connected" | ConnectionStatus =
+            let connectionStatus: "none" | "pending" | "connected" | "blocked" =
                 "none";
 
             if (connection) {
                 if (connection.status === ConnectionStatus.ACCEPTED) {
                     connectionStatus = "connected";
                 } else if (connection.status === ConnectionStatus.PENDING) {
-                    if (connection.senderId === session.user.id) {
-                        connectionStatus = ConnectionStatus.PENDING; // We sent the request
-                    } else {
-                        connectionStatus = ConnectionStatus.PENDING; // They sent the request (we can accept/reject)
-                    }
+                    connectionStatus = "pending"; // We sent the request
                 } else if (connection.status === ConnectionStatus.BLOCKED) {
-                    connectionStatus = ConnectionStatus.BLOCKED;
+                    connectionStatus = "blocked";
+                } else if (connection.status === ConnectionStatus.REJECTED) {
+                    connectionStatus = "none"; // Treat rejected as no connection
                 }
             }
 
