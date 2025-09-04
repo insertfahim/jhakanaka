@@ -3,7 +3,27 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log("🌟 Setting up BRAC University Study Groups Database...");
+  console.log("🗑️ Deleting existing data...");
+  await prisma.pollVote.deleteMany();
+  await prisma.pollOption.deleteMany();
+  await prisma.poll.deleteMany();
+  await prisma.eventRSVP.deleteMany();
+  await prisma.calendarEvent.deleteMany();
+  await prisma.forumReply.deleteMany();
+  await prisma.forumPost.deleteMany();
+  await prisma.message.deleteMany();
+  await prisma.studyGroupMember.deleteMany();
+  await prisma.studyGroup.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.userTag.deleteMany();
+  await prisma.connection.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.verificationToken.deleteMany();
+  await prisma.user.deleteMany();
+  console.log("✅ Existing data deleted.");
+
+  console.log("🌟 Setting up BRAC University Study Groups Database...");
 
     // Create diverse BRAC University students
     const users = await Promise.all([
