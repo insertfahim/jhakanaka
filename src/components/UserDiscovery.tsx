@@ -63,18 +63,21 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [departmentFilter, setDepartmentFilter] = useState("");
-    const [yearFilter, setYearFilter] = useState("");
-    const [groupFilter, setGroupFilter] = useState("");
+    const [departmentFilter, setDepartmentFilter] = useState("all");
+    const [yearFilter, setYearFilter] = useState("all");
+    const [groupFilter, setGroupFilter] = useState("all");
     const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
     const fetchUsers = useCallback(async () => {
         try {
             const params = new URLSearchParams();
             if (searchQuery) params.append("search", searchQuery);
-            if (departmentFilter) params.append("department", departmentFilter);
-            if (yearFilter) params.append("year", yearFilter);
-            if (groupFilter) params.append("group", groupFilter);
+            if (departmentFilter && departmentFilter !== "all")
+                params.append("department", departmentFilter);
+            if (yearFilter && yearFilter !== "all")
+                params.append("year", yearFilter);
+            if (groupFilter && groupFilter !== "all")
+                params.append("group", groupFilter);
 
             const response = await fetch(
                 `/api/users/discovery?${params.toString()}`
@@ -235,7 +238,7 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                                 <SelectValue placeholder="Department" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">
+                                <SelectItem value="all">
                                     All Departments
                                 </SelectItem>
                                 {getDepartments().map((dept) => (
@@ -254,7 +257,7 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                                 <SelectValue placeholder="Year" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Years</SelectItem>
+                                <SelectItem value="all">All Years</SelectItem>
                                 {getYears().map((year) => (
                                     <SelectItem
                                         key={year}
@@ -274,7 +277,7 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                                 <SelectValue placeholder="Study Group" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Groups</SelectItem>
+                                <SelectItem value="all">All Groups</SelectItem>
                                 <SelectItem value="shared">
                                     Shared Groups
                                 </SelectItem>

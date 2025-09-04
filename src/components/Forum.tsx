@@ -75,8 +75,8 @@ export default function Forum({ groupId, groupName }: ForumProps) {
     const [posts, setPosts] = useState<ForumPost[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedTag, setSelectedTag] = useState<string>("");
-    const [resolvedFilter, setResolvedFilter] = useState<string>("");
+    const [selectedTag, setSelectedTag] = useState<string>("all");
+    const [resolvedFilter, setResolvedFilter] = useState<string>("all");
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [selectedPost, setSelectedPost] = useState<ForumPost | null>(null);
     const [replyContent, setReplyContent] = useState("");
@@ -94,8 +94,10 @@ export default function Forum({ groupId, groupName }: ForumProps) {
         try {
             const params = new URLSearchParams();
             if (searchQuery) params.append("search", searchQuery);
-            if (selectedTag) params.append("tag", selectedTag);
-            if (resolvedFilter) params.append("resolved", resolvedFilter);
+            if (selectedTag && selectedTag !== "all")
+                params.append("tag", selectedTag);
+            if (resolvedFilter && resolvedFilter !== "all")
+                params.append("resolved", resolvedFilter);
 
             const response = await fetch(
                 `/api/groups/${groupId}/forum?${params.toString()}`
@@ -449,7 +451,7 @@ export default function Forum({ groupId, groupName }: ForumProps) {
                                 <SelectValue placeholder="Filter by tag" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All tags</SelectItem>
+                                <SelectItem value="all">All tags</SelectItem>
                                 {getAllTags().map((tag) => (
                                     <SelectItem key={tag} value={tag}>
                                         {tag}
@@ -466,7 +468,7 @@ export default function Forum({ groupId, groupName }: ForumProps) {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All</SelectItem>
+                                <SelectItem value="all">All</SelectItem>
                                 <SelectItem value="false">Open</SelectItem>
                                 <SelectItem value="true">Resolved</SelectItem>
                             </SelectContent>
