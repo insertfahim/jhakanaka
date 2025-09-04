@@ -73,10 +73,10 @@ interface CalendarProps {
 }
 
 export default function Calendar({ groupId, groupName }: CalendarProps) {
-    const { data: session } = useSession();
+    useSession();
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<"month" | "week" | "day">("month");
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(

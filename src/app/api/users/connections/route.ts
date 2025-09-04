@@ -20,7 +20,7 @@ export async function GET() {
                     { senderId: session.user.id },
                     { receiverId: session.user.id },
                 ],
-                status: "accepted",
+                status: "ACCEPTED",
             },
             include: {
                 sender: {
@@ -50,7 +50,7 @@ export async function GET() {
         });
 
         // Format connections for the frontend
-        const formattedConnections = connections.map((connection: any) => {
+        const formattedConnections = connections.map((connection) => {
             const otherUser =
                 connection.senderId === session.user.id
                     ? connection.receiver
@@ -127,12 +127,12 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingConnection) {
-            if (existingConnection.status === "accepted") {
+            if (existingConnection.status === "ACCEPTED") {
                 return NextResponse.json(
                     { error: "Users are already connected" },
                     { status: 400 }
                 );
-            } else if (existingConnection.status === "pending") {
+            } else if (existingConnection.status === "PENDING") {
                 return NextResponse.json(
                     { error: "Connection request already exists" },
                     { status: 400 }
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
             data: {
                 senderId: session.user.id,
                 receiverId: targetUserId,
-                status: "pending",
+                status: "PENDING",
             },
         });
 
@@ -213,7 +213,7 @@ export async function PUT(request: NextRequest) {
         const updatedConnection = await prisma.connection.update({
             where: { id: connectionId },
             data: {
-                status: action === "accept" ? "accepted" : "rejected",
+                status: action === "accept" ? "ACCEPTED" : "REJECTED",
             },
         });
 

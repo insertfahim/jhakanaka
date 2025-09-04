@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-export default function ProfileSetup() {
+export default function EditProfile() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [checkingProfile, setCheckingProfile] = useState(true);
+    const [fetchLoading, setFetchLoading] = useState(true);
     const [formData, setFormData] = useState({
         major: "",
         semester: "",
@@ -17,33 +17,47 @@ export default function ProfileSetup() {
         skills: "",
         interests: "",
         showCgpa: false,
+        isProfilePublic: true,
     });
-
-    const checkExistingProfile = useCallback(async () => {
-        try {
-            const response = await fetch("/api/profile");
-            if (response.ok) {
-                const profileData = await response.json();
-                // If user has basic profile info, redirect to dashboard
-                if (profileData.major || profileData.semester) {
-                    router.push("/dashboard");
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error("Error checking profile:", error);
-        } finally {
-            setCheckingProfile(false);
-        }
-    }, [router]);
 
     useEffect(() => {
         if (status === "authenticated") {
-            checkExistingProfile();
+            fetchProfile();
         }
-    }, [status, checkExistingProfile]);
+    }, [status]);
 
-    if (status === "loading" || checkingProfile) {
+    const fetchProfile = async () => {
+        try {
+            const response = await fetch("/api/profile", {
+                credentials: "include",
+            });
+            if (response.ok) {
+                const profileData = await response.json();
+                setFormData({
+                    major: profileData.major || "",
+                    semester: profileData.semester?.toString() || "",
+                    cgpa: profileData.cgpa?.toString() || "",
+                    enrolledCourses: Array.isArray(profileData.enrolledCourses)
+                        ? profileData.enrolledCourses.join(", ")
+                        : profileData.enrolledCourses || "",
+                    skills: Array.isArray(profileData.skills)
+                        ? profileData.skills.join(", ")
+                        : profileData.skills || "",
+                    interests: Array.isArray(profileData.interests)
+                        ? profileData.interests.join(", ")
+                        : profileData.interests || "",
+                    showCgpa: profileData.showCgpa || false,
+                    isProfilePublic: profileData.isProfilePublic !== false,
+                });
+            }
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+        } finally {
+            setFetchLoading(false);
+        }
+    };
+
+    if (status === "loading" || fetchLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -83,6 +97,7 @@ export default function ProfileSetup() {
                 headers: {
                     "Content-Type": "application/json",
                 },
+                credentials: "include",
                 body: JSON.stringify({
                     major: formData.major,
                     semester: formData.semester,
@@ -91,28 +106,34 @@ export default function ProfileSetup() {
                     skills: formData.skills,
                     interests: formData.interests,
                     showCgpa: formData.showCgpa,
+                    isProfilePublic: formData.isProfilePublic,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error("Failed to update profile");
+                const errorData = await response
+                    .json()
+                    .catch(() => ({ error: "Unknown error" }));
+                console.error("Profile update failed:", errorData);
+                throw new Error(errorData.error || "Failed to update profile");
             }
 
+            alert("Profile updated successfully!");
             router.push("/dashboard");
         } catch (error) {
             console.error("Error updating profile:", error);
-            alert("Failed to update profile. Please try again.");
+            alert(
+                `Failed to update profile. ${
+                    error instanceof Error ? error.message : "Please try again."
+                }`
+            );
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSkip = () => {
-        router.push("/dashboard");
-    };
-
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="flex justify-center">
                     <div className="h-12 w-12 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -126,16 +147,16 @@ export default function ProfileSetup() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                             />
                         </svg>
                     </div>
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Complete Your Profile
+                    Edit Your Profile
                 </h2>
                 <p className="mt-2 text-center text-sm text-gray-600">
-                    Help us personalize your experience with BRACU Notes
+                    Update your academic information and preferences
                 </p>
             </div>
 
@@ -225,14 +246,16 @@ export default function ProfileSetup() {
                             <textarea
                                 id="enrolledCourses"
                                 name="enrolledCourses"
-                                rows={3}
+                                rows={4}
                                 className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                placeholder="e.g., CSE110, MAT120, ENG101 (one per line or comma-separated)"
+                                placeholder="Enter your current semester courses, one per line or separated by commas:&#10;&#10;CSE110 - Programming Language I&#10;MAT120 - Calculus I&#10;ENG101 - English Composition&#10;PHY101 - Physics I"
                                 value={formData.enrolledCourses}
                                 onChange={handleChange}
                             />
                             <p className="mt-1 text-xs text-gray-500">
                                 This helps us recommend relevant study groups
+                                and resources. Include course codes and names
+                                for better matching.
                             </p>
                         </div>
 
@@ -275,20 +298,35 @@ export default function ProfileSetup() {
                             />
                         </div>
 
+                        <div>
+                            <label className="inline-flex items-center">
+                                <input
+                                    type="checkbox"
+                                    name="isProfilePublic"
+                                    checked={formData.isProfilePublic}
+                                    onChange={handleChange}
+                                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                />
+                                <span className="ml-2 text-sm text-gray-600">
+                                    Make profile visible to other students
+                                </span>
+                            </label>
+                        </div>
+
                         <div className="flex space-x-3">
                             <button
                                 type="submit"
                                 disabled={loading}
                                 className="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                             >
-                                {loading ? "Saving..." : "Complete Profile"}
+                                {loading ? "Updating..." : "Update Profile"}
                             </button>
                             <button
                                 type="button"
-                                onClick={handleSkip}
+                                onClick={() => router.push("/dashboard")}
                                 className="flex-1 flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                             >
-                                Skip for Now
+                                Cancel
                             </button>
                         </div>
                     </form>

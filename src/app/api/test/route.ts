@@ -8,7 +8,7 @@ export async function GET() {
             timestamp: new Date().toISOString(),
             message: "API is working",
         });
-    } catch (error) {
+    } catch {
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

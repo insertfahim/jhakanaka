@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { randomUUID } from "crypto";
+import { MessageType } from "@prisma/client";
 
 const UPLOAD_DIR = join(process.cwd(), "uploads");
 
@@ -116,7 +117,7 @@ export async function POST(
                 content: content || file.name,
                 userId: session.user.id,
                 groupId,
-                type: messageType,
+                type: messageType as MessageType,
                 fileUrl: `/api/files/${fileName}`,
                 fileName: file.name,
                 fileSize: file.size,

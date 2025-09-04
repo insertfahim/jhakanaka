@@ -25,6 +25,14 @@ model User {
   avatar      String?
   department  String?
   year        Int?
+  major       String?
+  semester    Int?
+  cgpa        Float?
+  enrolledCourses String[]
+  skills      String[]
+  interests   String[]
+  showCgpa    Boolean @default(false)
+  isProfilePublic Boolean @default(true)
 
   // Online Status
   isOnline    Boolean @default(false)
@@ -286,6 +294,7 @@ model Poll {
   description String?
   type        PollType
   isAnonymous Boolean  @default(false)
+  isClosed    Boolean  @default(false)
   expiresAt   DateTime?
 
   userId    String

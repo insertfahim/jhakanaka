@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { userId: string } }
+    { params }: { params: Promise<{ userId: string }> }
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -17,7 +17,7 @@ export async function DELETE(
             );
         }
 
-        const targetUserId = params.userId;
+        const { userId: targetUserId } = await params;
 
         if (!targetUserId) {
             return NextResponse.json(
@@ -33,12 +33,12 @@ export async function DELETE(
                     {
                         senderId: session.user.id,
                         receiverId: targetUserId,
-                        status: "pending",
+                        status: "PENDING",
                     },
                     {
                         senderId: targetUserId,
                         receiverId: session.user.id,
-                        status: "pending",
+                        status: "PENDING",
                     },
                 ],
             },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import {
     Card,
     CardContent,
@@ -269,9 +270,11 @@ export default function StudyGroupsList({
                                     )}
 
                                     {group.isMember && (
-                                        <Button variant="outline" size="sm">
-                                            View Group
-                                        </Button>
+                                        <Link href={`/dashboard/group/${group.id}`} passHref>
+                                            <Button variant="outline" size="sm">
+                                                View Group
+                                            </Button>
+                                        </Link>
                                     )}
                                 </div>
                             </div>

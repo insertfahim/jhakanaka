@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import ChatInterface from "@/components/ChatInterface";
 import StudyGroupsList from "@/components/StudyGroupsList";
 import CreateGroupDialog from "@/components/CreateGroupDialog";
@@ -31,6 +31,22 @@ interface UserGroup {
     };
 }
 
+interface UserProfile {
+    id: string;
+    name: string;
+    email: string;
+    studentId: string;
+    major: string;
+    semester: number;
+    cgpa: number | null;
+    enrolledCourses: string[];
+    skills: string[];
+    interests: string[];
+    showCgpa: boolean;
+    isProfilePublic: boolean;
+    createdAt: string;
+}
+
 export default function Dashboard() {
     const { data: session, status } = useSession();
     const router = useRouter();
@@ -44,12 +60,33 @@ export default function Dashboard() {
     } | null>(null);
     const [createGroupDialogOpen, setCreateGroupDialogOpen] = useState(false);
     const [userGroups, setUserGroups] = useState<UserGroup[]>([]);
+    const [stats, setStats] = useState({
+        studyGroups: 0,
+        messages: 0,
+        forumPosts: 0,
+        events: 0,
+    });
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
     useEffect(() => {
         if (status === "unauthenticated") {
             router.push("/auth/signin");
         }
     }, [status, router]);
+
+    const fetchUserProfile = useCallback(async () => {
+        if (session?.user?.id) {
+            try {
+                const response = await fetch("/api/profile");
+                if (response.ok) {
+                    const profile = await response.json();
+                    setUserProfile(profile);
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+            }
+        }
+    }, [session?.user?.id]);
 
     useEffect(() => {
         const fetchUserGroups = async () => {
@@ -59,6 +96,19 @@ export default function Dashboard() {
                     if (response.ok) {
                         const groups = await response.json();
                         setUserGroups(groups);
+
+                        // Calculate stats
+                        const totalGroups = groups.length;
+                        const totalMessages = await fetchUserMessageCount();
+                        const totalForumPosts = await fetchUserForumPostCount();
+                        const totalEvents = await fetchUserEventCount();
+
+                        setStats({
+                            studyGroups: totalGroups,
+                            messages: totalMessages,
+                            forumPosts: totalForumPosts,
+                            events: totalEvents,
+                        });
                     }
                 } catch (error) {
                     console.error("Error fetching user groups:", error);
@@ -67,7 +117,50 @@ export default function Dashboard() {
         };
 
         fetchUserGroups();
-    }, [session?.user?.id]);
+        fetchUserProfile();
+    }, [session?.user?.id, fetchUserProfile]);
+
+    const fetchUserMessageCount = async (): Promise<number> => {
+        try {
+            const response = await fetch("/api/users/messages/count");
+            if (response.ok) {
+                const data = await response.json();
+                return data.count;
+            }
+            return 0;
+        } catch (error) {
+            console.error("Error fetching message count:", error);
+            return 0;
+        }
+    };
+
+    const fetchUserForumPostCount = async (): Promise<number> => {
+        try {
+            const response = await fetch("/api/users/forum-posts/count");
+            if (response.ok) {
+                const data = await response.json();
+                return data.count;
+            }
+            return 0;
+        } catch (error) {
+            console.error("Error fetching forum post count:", error);
+            return 0;
+        }
+    };
+
+    const fetchUserEventCount = async (): Promise<number> => {
+        try {
+            const response = await fetch("/api/users/events/count");
+            if (response.ok) {
+                const data = await response.json();
+                return data.count;
+            }
+            return 0;
+        } catch (error) {
+            console.error("Error fetching event count:", error);
+            return 0;
+        }
+    };
 
     if (status === "loading") {
         return (
@@ -163,14 +256,17 @@ export default function Dashboard() {
                             {navigation.map((item) => (
                                 <button
                                     key={item.name}
-                                    onClick={() =>
-                                        setActiveTab(
-                                            item.name
-                                                .toLowerCase()
-                                                .replace(" ", "-")
-                                                .replace("&", "")
-                                        )
-                                    }
+                                    onClick={() => {
+                                        let tabName = item.name.toLowerCase();
+                                        if (tabName === "study groups") {
+                                            tabName = "groups";
+                                        } else if (tabName === "q&a forum") {
+                                            tabName = "forum";
+                                        } else if (tabName === "discover users") {
+                                            tabName = "discover-users";
+                                        }
+                                        setActiveTab(tabName.replace(" ", "-").replace("&", ""));
+                                    }}
                                     className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
                                         item.current
                                             ? "border-blue-500 text-blue-600"
@@ -215,7 +311,7 @@ export default function Dashboard() {
                                                     Study Groups
                                                 </p>
                                                 <p className="text-2xl font-bold text-gray-900">
-                                                    0
+                                                    {stats.studyGroups}
                                                 </p>
                                             </div>
                                         </div>
@@ -243,7 +339,7 @@ export default function Dashboard() {
                                                     Messages
                                                 </p>
                                                 <p className="text-2xl font-bold text-gray-900">
-                                                    0
+                                                    {stats.messages}
                                                 </p>
                                             </div>
                                         </div>
@@ -271,7 +367,7 @@ export default function Dashboard() {
                                                     Forum Posts
                                                 </p>
                                                 <p className="text-2xl font-bold text-gray-900">
-                                                    0
+                                                    {stats.forumPosts}
                                                 </p>
                                             </div>
                                         </div>
@@ -299,7 +395,7 @@ export default function Dashboard() {
                                                     Events
                                                 </p>
                                                 <p className="text-2xl font-bold text-gray-900">
-                                                    0
+                                                    {stats.events}
                                                 </p>
                                             </div>
                                         </div>
@@ -906,35 +1002,45 @@ export default function Dashboard() {
 
                         {activeTab === "profile" && (
                             <div className="p-6">
-                                <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                                    Profile
-                                </h1>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        Profile
+                                    </h1>
+                                    <button
+                                        onClick={() =>
+                                            router.push("/profile/edit")
+                                        }
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                                    >
+                                        Edit Profile
+                                    </button>
+                                </div>
                                 <div className="space-y-6">
                                     <div className="flex items-center space-x-6">
                                         <div className="h-20 w-20 bg-blue-500 rounded-full flex items-center justify-center">
                                             <span className="text-2xl font-medium text-white">
-                                                {session.user?.name
+                                                {userProfile?.name
                                                     ?.charAt(0)
-                                                    ?.toUpperCase() || "U"}
+                                                    ?.toUpperCase() ||
+                                                    session.user?.name
+                                                        ?.charAt(0)
+                                                        ?.toUpperCase() ||
+                                                    "U"}
                                             </span>
                                         </div>
                                         <div>
                                             <h2 className="text-xl font-medium text-gray-900">
-                                                {session.user?.name}
+                                                {userProfile?.name ||
+                                                    session.user?.name}
                                             </h2>
                                             <p className="text-gray-600">
-                                                {session.user?.email}
+                                                {userProfile?.email ||
+                                                    session.user?.email}
                                             </p>
                                             <p className="text-sm text-gray-500">
                                                 Student ID:{" "}
-                                                {session.user &&
-                                                "studentId" in session.user
-                                                    ? (
-                                                          session.user as {
-                                                              studentId: string;
-                                                          }
-                                                      ).studentId
-                                                    : "Not set"}
+                                                {userProfile?.studentId ||
+                                                    "Not set"}
                                             </p>
                                         </div>
                                     </div>
@@ -949,7 +1055,8 @@ export default function Dashboard() {
                                                     Major
                                                 </label>
                                                 <p className="mt-1 text-sm text-gray-900">
-                                                    Not set
+                                                    {userProfile?.major ||
+                                                        "Not set"}
                                                 </p>
                                             </div>
                                             <div>
@@ -957,7 +1064,8 @@ export default function Dashboard() {
                                                     Semester
                                                 </label>
                                                 <p className="mt-1 text-sm text-gray-900">
-                                                    Not set
+                                                    {userProfile?.semester ||
+                                                        "Not set"}
                                                 </p>
                                             </div>
                                             <div>
@@ -965,15 +1073,66 @@ export default function Dashboard() {
                                                     CGPA
                                                 </label>
                                                 <p className="mt-1 text-sm text-gray-900">
-                                                    Not set
+                                                    {userProfile?.cgpa ||
+                                                        "Not set"}
                                                 </p>
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700">
-                                                    Skills
+                                                    Member Since
                                                 </label>
                                                 <p className="mt-1 text-sm text-gray-900">
-                                                    Not set
+                                                    {userProfile?.createdAt
+                                                        ? new Date(
+                                                              userProfile.createdAt
+                                                          ).toLocaleDateString()
+                                                        : "Not set"}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Enrolled Courses
+                                                </label>
+                                                <div className="mt-1">
+                                                    {userProfile?.enrolledCourses &&
+                                                    userProfile.enrolledCourses
+                                                        .length > 0 ? (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {userProfile.enrolledCourses.map(
+                                                                (
+                                                                    course,
+                                                                    index
+                                                                ) => (
+                                                                    <span
+                                                                        key={
+                                                                            index
+                                                                        }
+                                                                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                                                    >
+                                                                        {course.trim()}
+                                                                    </span>
+                                                                )
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-gray-900">
+                                                            Not set
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700">
+                                                    Interests
+                                                </label>
+                                                <p className="mt-1 text-sm text-gray-900">
+                                                    {userProfile?.interests &&
+                                                    userProfile.interests
+                                                        .length > 0
+                                                        ? userProfile.interests.join(
+                                                              ", "
+                                                          )
+                                                        : "Not set"}
                                                 </p>
                                             </div>
                                         </div>

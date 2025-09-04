@@ -1,4 +1,4 @@
-import { NextAuthOptions } from "next-auth";
+import { NextAuthOptions, DefaultSession } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
@@ -20,8 +20,7 @@ export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma),
     secret: process.env.NEXTAUTH_SECRET,
     debug: process.env.NODE_ENV === "development",
-    basePath: "/api/auth",
-    baseUrl: process.env.NEXTAUTH_URL,
+    
     providers: [
         CredentialsProvider({
             name: "credentials",
@@ -33,63 +32,100 @@ export const authOptions: NextAuthOptions = {
                 isSignUp: { label: "Is Sign Up", type: "text" },
             },
             async authorize(credentials) {
-                try {
-                    if (!credentials?.email || !credentials?.password) {
-                        throw new Error("Email and password are required");
-                    }
+                if (!credentials?.email || !credentials?.password) {
+                    throw new Error("Email and password are required");
+                }
 
-                    const email = credentials.email.toLowerCase();
+                const email = credentials.email.toLowerCase();
 
-                    // Validate BRACU email domain
-                    if (!isValidBracuEmail(email)) {
+                // Validate BRACU email domain
+                if (!isValidBracuEmail(email)) {
+                    throw new Error(
+                        "Only BRACU email addresses (@bracu.ac.bd or @g.bracu.ac.bd) are allowed"
+                    );
+                }
+
+                const isSignUp = credentials.isSignUp === "true";
+
+                if (isSignUp) {
+                    // Sign up process
+                    if (!credentials.studentId || !credentials.name) {
                         throw new Error(
-                            "Only BRACU email addresses (@bracu.ac.bd or @g.bracu.ac.bd) are allowed"
+                            "Student ID and name are required for registration"
                         );
                     }
 
-                    const isSignUp = credentials.isSignUp === "true";
+                    if (!isValidStudentId(credentials.studentId)) {
+                        throw new Error(
+                            "Invalid student ID format. Must be 8 digits"
+                        );
+                    }
 
-                    if (isSignUp) {
-                        // Sign up process
-                        if (!credentials.studentId || !credentials.name) {
-                            throw new Error(
-                                "Student ID and name are required for registration"
-                            );
-                        }
+                    // Check if user already exists
+                    const existingUser = await prisma.user.findUnique({
+                        where: { email },
+                    });
 
-                        if (!isValidStudentId(credentials.studentId)) {
-                            throw new Error(
-                                "Invalid student ID format. Must be 8 digits"
-                            );
-                        }
+                    if (existingUser) {
+                        throw new Error("User already exists with this email");
+                    }
 
-                        // Check if user already exists
-                        const existingUser = await prisma.user.findUnique({
-                            where: { email },
-                        });
+                    // Check if student ID is already taken
+                    const existingStudentId = await prisma.user.findUnique({
+                        where: { studentId: credentials.studentId },
+                    });
 
-                        if (existingUser) {
-                            throw new Error(
-                                "User already exists with this email"
-                            );
-                        }
+                    if (existingStudentId) {
+                        throw new Error("Student ID already registered");
+                    }
 
-                        // Check if student ID is already taken
-                        const existingStudentId = await prisma.user.findUnique({
-                            where: { studentId: credentials.studentId },
-                        });
+                    // Create new user
+                    const user = await prisma.user.create({
+                        data: {
+                            email,
+                            name: credentials.name,
+                            studentId: credentials.studentId,
+                            isVerified: true, // BRACU email is automatically verified
+                        },
+                    });
 
-                        if (existingStudentId) {
-                            throw new Error("Student ID already registered");
-                        }
+                    // Create account for NextAuth
+                    await prisma.account.create({
+                        data: {
+                            userId: user.id,
+                            type: "credentials",
+                            provider: "credentials",
+                            providerAccountId: user.id,
+                        },
+                    });
 
-                        // Create new user
-                        const user = await prisma.user.create({
+                    return {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        studentId: user.studentId,
+                    };
+                } else {
+                    // Sign in process
+                    let user = await prisma.user.findUnique({
+                        where: { email },
+                    });
+
+                    if (!user) {
+                        // For demo purposes, create user if not exists
+                        const studentId = Math.floor(
+                            10000000 + Math.random() * 90000000
+                        ).toString();
+                        const name = email
+                            .split("@")[0]
+                            .replace(/[^a-zA-Z ]/g, " ")
+                            .trim();
+                        user = await prisma.user.create({
                             data: {
                                 email,
-                                name: credentials.name,
-                                studentId: credentials.studentId,
-                                isVerified: true, // BRACU email is automatically verified
+                                name: name || "Demo User",
+                                studentId,
+                                isVerified: true,
                             },
                         });
 
@@ -102,60 +138,16 @@ export const authOptions: NextAuthOptions = {
                                 providerAccountId: user.id,
                             },
                         });
-
-                        return {
-                            id: user.id,
-                            email: user.email,
-                            name: user.name,
-                            studentId: user.studentId,
-                        };
-                    } else {
-                        // Sign in process
-                        let user = await prisma.user.findUnique({
-                            where: { email },
-                        });
-
-                        if (!user) {
-                            // For demo purposes, create user if not exists
-                            const studentId = Math.floor(
-                                10000000 + Math.random() * 90000000
-                            ).toString();
-                            const name = email
-                                .split("@")[0]
-                                .replace(/[^a-zA-Z ]/g, " ")
-                                .trim();
-                            user = await prisma.user.create({
-                                data: {
-                                    email,
-                                    name: name || "Demo User",
-                                    studentId,
-                                    isVerified: true,
-                                },
-                            });
-
-                            // Create account for NextAuth
-                            await prisma.account.create({
-                                data: {
-                                    userId: user.id,
-                                    type: "credentials",
-                                    provider: "credentials",
-                                    providerAccountId: user.id,
-                                },
-                            });
-                        }
-
-                        // For demo purposes, we'll skip password verification
-                        // In production, you'd store and verify hashed passwords
-                        return {
-                            id: user.id,
-                            email: user.email,
-                            name: user.name,
-                            studentId: user.studentId,
-                        };
                     }
-                } catch (error) {
-                    console.error("Authentication error:", error);
-                    return null;
+
+                    // For demo purposes, we'll skip password verification
+                    // In production, you'd store and verify hashed passwords
+                    return {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name,
+                        studentId: user.studentId,
+                    };
                 }
             },
         }),

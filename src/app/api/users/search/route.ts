@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
+
+interface UserWhereInput {
+    id?: { not: string };
+    OR?: Array<{
+        name?: { contains: string; mode: Prisma.QueryMode };
+        major?: { contains: string; mode: Prisma.QueryMode };
+        skills?: { has: string };
+        interests?: { has: string };
+    }>;
+    major?: { contains: string; mode: Prisma.QueryMode };
+    semester?: number;
+    cgpa?: { gte?: number; lte?: number };
+    skills?: { has: string };
+    interests?: { has: string };
+    enrolledCourses?: { has: string };
+    isProfilePublic?: boolean;
+}
 
 export async function GET(request: NextRequest) {
     try {
@@ -25,15 +43,15 @@ export async function GET(request: NextRequest) {
         const course = searchParams.get("course");
 
         // Build where clause
-        const where: Record<string, unknown> = {
+        const where: UserWhereInput = {
             id: { not: session.user.id }, // Exclude current user
             isProfilePublic: true, // Only show public profiles
         };
 
         if (search) {
             where.OR = [
-                { name: { contains: search, mode: "insensitive" } },
-                { major: { contains: search, mode: "insensitive" } },
+                { name: { contains: search, mode: Prisma.QueryMode.insensitive } },
+                { major: { contains: search, mode: Prisma.QueryMode.insensitive } },
                 { skills: { has: search } },
                 { interests: { has: search } },
             ];

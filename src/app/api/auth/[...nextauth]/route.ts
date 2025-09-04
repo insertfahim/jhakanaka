@@ -3,10 +3,4 @@ import { authOptions } from "@/lib/auth";
 
 const handler = NextAuth(authOptions);
 
-export async function GET(...args: any[]) {
-    return handler(...args);
-}
-
-export async function POST(...args: any[]) {
-    return handler(...args);
-}
+export { handler as GET, handler as POST };

@@ -27,6 +27,8 @@ import {
     TrendingUp,
     Calendar,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface PollOption {
     id: string;
@@ -144,33 +146,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
         }
     };
 
-    const handleVote = async (pollId: string, optionIds: string[]) => {
-        try {
-            const response = await fetch(
-                `/api/groups/${groupId}/polls/${pollId}/vote`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        optionIds,
-                    }),
-                }
-            );
-
-            if (response.ok) {
-                const updatedPoll = await response.json();
-                setPolls((prev) =>
-                    prev.map((poll) =>
-                        poll.id === pollId ? updatedPoll : poll
-                    )
-                );
-            }
-        } catch (error) {
-            console.error("Error voting:", error);
-        }
-    };
+    
 
     const handleAddOption = async (pollId: string) => {
         if (!newOptionText.trim()) return;
@@ -725,7 +701,6 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                             <Checkbox
                                                                 id={`vote-${option.id}`}
                                                                 onCheckedChange={(
-                                                                    checked
                                                                 ) => {
                                                                     // Handle multiple choice voting
                                                                 }}

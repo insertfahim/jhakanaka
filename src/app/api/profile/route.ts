@@ -8,13 +8,17 @@ export async function PUT(request: NextRequest) {
         const session = await getServerSession(authOptions);
 
         if (!session?.user?.id) {
+            console.log("No session or user ID found", { session });
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
             );
         }
 
+        console.log("Session found for user:", session.user.id);
+
         const body = await request.json();
+        console.log("Request body:", body);
         const {
             major,
             semester,
@@ -48,15 +52,52 @@ export async function PUT(request: NextRequest) {
                   .filter((interest: string) => interest.length > 0)
             : [];
 
+        // Validate and parse numeric fields
+        let parsedSemester = null;
+        if (semester && semester.trim() !== "") {
+            const semNum = parseInt(semester);
+            if (isNaN(semNum)) {
+                return NextResponse.json(
+                    { error: "Invalid semester value" },
+                    { status: 400 }
+                );
+            }
+            parsedSemester = semNum;
+        }
+
+        let parsedCgpa = null;
+        if (cgpa && cgpa.trim() !== "") {
+            const cgpaNum = parseFloat(cgpa);
+            if (isNaN(cgpaNum)) {
+                return NextResponse.json(
+                    { error: "Invalid CGPA value" },
+                    { status: 400 }
+                );
+            }
+            parsedCgpa = cgpaNum;
+        }
+
         // Update user profile
+        console.log("Updating user with data:", {
+            major: major || null,
+            semester: parsedSemester,
+            cgpa: parsedCgpa,
+            enrolledCourses: enrolledCoursesArray,
+            skills: skillsArray,
+            interests: interestsArray,
+            showCgpa: showCgpa || false,
+            isProfilePublic:
+                isProfilePublic !== undefined ? isProfilePublic : true,
+        });
+
         const updatedUser = await prisma.user.update({
             where: {
                 id: session.user.id,
             },
             data: {
                 major: major || null,
-                semester: semester ? parseInt(semester) : null,
-                cgpa: cgpa ? parseFloat(cgpa) : null,
+                semester: parsedSemester,
+                cgpa: parsedCgpa,
                 enrolledCourses: enrolledCoursesArray,
                 skills: skillsArray,
                 interests: interestsArray,
@@ -83,13 +124,18 @@ export async function PUT(request: NextRequest) {
     } catch (error) {
         console.error("Error updating profile:", error);
         return NextResponse.json(
-            { error: "Internal server error" },
+            {
+                error: "Internal server error",
+                details:
+                    error instanceof Error ? error.message : "Unknown error",
+                stack: error instanceof Error ? error.stack : undefined,
+            },
             { status: 500 }
         );
     }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const session = await getServerSession(authOptions);
 

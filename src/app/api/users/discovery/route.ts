@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { Prisma, ConnectionStatus } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
     try {
@@ -24,9 +25,9 @@ export async function GET(request: NextRequest) {
         const where: {
             id?: { not: string };
             OR?: Array<{
-                name?: { contains: string; mode: string };
-                email?: { contains: string; mode: string };
-                studentId?: { contains: string; mode: string };
+                name?: { contains: string; mode: Prisma.QueryMode };
+                email?: { contains: string; mode: Prisma.QueryMode };
+                studentId?: { contains: string; mode: Prisma.QueryMode };
             }>;
             department?: string;
             year?: number;
@@ -46,19 +47,19 @@ export async function GET(request: NextRequest) {
                 {
                     name: {
                         contains: search,
-                        mode: "insensitive",
+                        mode: Prisma.QueryMode.insensitive,
                     },
                 },
                 {
                     email: {
                         contains: search,
-                        mode: "insensitive",
+                        mode: Prisma.QueryMode.insensitive,
                     },
                 },
                 {
                     studentId: {
                         contains: search,
-                        mode: "insensitive",
+                        mode: Prisma.QueryMode.insensitive,
                     },
                 },
             ];
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
         if (group) {
             if (group === "shared") {
                 // Users who are in groups with the current user
-                const userGroups = await prisma.groupMember.findMany({
+                const userGroups = await prisma.studyGroupMember.findMany({
                     where: { userId: session.user.id },
                     select: { groupId: true },
                 });
@@ -119,15 +120,20 @@ export async function GET(request: NextRequest) {
                 lastSeen: true,
                 _count: {
                     select: {
-                        groups: true,
-                        connections: true,
+                        studyGroups: true,
+                        sentConnections: true,
+                        receivedConnections: true,
                     },
                 },
-                groups: {
+                studyGroups: {
                     select: {
                         id: true,
-                        name: true,
-                        courseCode: true,
+                        group: {
+                            select: {
+                                name: true,
+                                courseCode: true,
+                            }
+                        }
                     },
                     take: 5, // Limit to prevent too much data
                 },
@@ -163,7 +169,7 @@ export async function GET(request: NextRequest) {
         });
 
         // Add connection status to each user
-        const usersWithConnectionStatus = users.map((user: any) => {
+        const usersWithConnectionStatus = users.map((user) => {
             const connection = connections.find(
                 (conn: {
                     senderId: string;
@@ -176,20 +182,20 @@ export async function GET(request: NextRequest) {
                         conn.receiverId === session.user.id)
             );
 
-            let connectionStatus: "none" | "pending" | "connected" | "blocked" =
+            let connectionStatus: "none" | "connected" | ConnectionStatus =
                 "none";
 
             if (connection) {
-                if (connection.status === "accepted") {
+                if (connection.status === ConnectionStatus.ACCEPTED) {
                     connectionStatus = "connected";
-                } else if (connection.status === "pending") {
+                } else if (connection.status === ConnectionStatus.PENDING) {
                     if (connection.senderId === session.user.id) {
-                        connectionStatus = "pending"; // We sent the request
+                        connectionStatus = ConnectionStatus.PENDING; // We sent the request
                     } else {
-                        connectionStatus = "pending"; // They sent the request (we can accept/reject)
+                        connectionStatus = ConnectionStatus.PENDING; // They sent the request (we can accept/reject)
                     }
-                } else if (connection.status === "blocked") {
-                    connectionStatus = "blocked";
+                } else if (connection.status === ConnectionStatus.BLOCKED) {
+                    connectionStatus = ConnectionStatus.BLOCKED;
                 }
             }
 

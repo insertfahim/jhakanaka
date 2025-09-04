@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function POST(
+export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string; pollId: string }> }
 ) {
@@ -53,71 +53,68 @@ export async function POST(
             );
         }
 
-        // Check if poll has expired
-        if (poll.expiresAt && new Date() > poll.expiresAt) {
+        // Only poll creator or group admin/owner can close poll
+        if (poll.userId !== session.user.id && member.role === "MEMBER") {
             return NextResponse.json(
-                { error: "Poll has expired" },
-                { status: 400 }
+                { error: "Only poll creator or group admin can modify poll" },
+                { status: 403 }
             );
         }
 
         const body = await request.json();
-        const { optionIds } = body;
+        const { isClosed } = body;
 
-        if (!optionIds || !Array.isArray(optionIds) || optionIds.length === 0) {
+        if (typeof isClosed !== "boolean") {
             return NextResponse.json(
-                { error: "At least one option must be selected" },
+                { error: "isClosed must be a boolean" },
                 { status: 400 }
             );
         }
 
-        // Validate options exist and belong to the poll
-        const options = await prisma.pollOption.findMany({
+        const updatedPoll = await prisma.poll.update({
             where: {
-                id: { in: optionIds },
-                pollId,
+                id: pollId,
+            },
+            data: {
+                isClosed,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                options: {
+                    include: {
+                        votes: true,
+                        _count: {
+                            select: {
+                                votes: true,
+                            },
+                        },
+                    },
+                },
+                votes: {
+                    where: {
+                        userId: session.user.id,
+                    },
+                    select: {
+                        optionId: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        votes: true,
+                    },
+                },
             },
         });
 
-        if (options.length !== optionIds.length) {
-            return NextResponse.json(
-                { error: "Invalid option(s) selected" },
-                { status: 400 }
-            );
-        }
-
-        // Check if user has already voted (for single choice polls)
-        if (poll.type === "SINGLE_CHOICE") {
-            const existingVote = await prisma.pollVote.findFirst({
-                where: {
-                    userId: session.user.id,
-                    pollId,
-                },
-            });
-
-            if (existingVote) {
-                return NextResponse.json(
-                    { error: "You have already voted on this poll" },
-                    { status: 400 }
-                );
-            }
-        }
-
-        // Create votes
-        await prisma.pollVote.createMany({
-            data: optionIds.map((optionId) => ({
-                userId: session.user.id,
-                pollId,
-                optionId,
-            })),
-        });
-
-        return NextResponse.json(
-            { message: "Vote recorded successfully" },
-            { status: 201 }
-        );
+        return NextResponse.json(updatedPoll);
     } catch (error) {
-        console.error("Error voting on poll:", error);
+        console.error("Error updating poll:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

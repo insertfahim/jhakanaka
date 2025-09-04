@@ -2,6 +2,7 @@ import { Server as NetServer } from "http";
 import { NextApiRequest, NextApiResponse } from "next";
 import { Server as ServerIO } from "socket.io";
 import { prisma } from "@/lib/prisma";
+import { MessageType } from "@prisma/client";
 
 export type NextApiResponseServerIo = NextApiResponse & {
     socket: {
@@ -78,7 +79,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponseServerIo) => {
                                 content: data.content,
                                 userId: data.userId,
                                 groupId: data.groupId,
-                                type: data.type || "TEXT",
+                                type: (data.type as MessageType) || MessageType.TEXT,
                                 isUrgent: data.isUrgent || false,
                             },
                             include: {
