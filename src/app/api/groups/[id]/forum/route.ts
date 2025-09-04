@@ -174,6 +174,11 @@ export async function POST(
                     },
                 },
                 replies: true,
+                _count: {
+                    select: {
+                        replies: true,
+                    },
+                },
             },
         });
 

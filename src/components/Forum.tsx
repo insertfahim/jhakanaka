@@ -550,7 +550,9 @@ export default function Forum({ groupId, groupName }: ForumProps) {
                                             <div className="flex items-center space-x-1">
                                                 <MessageCircle className="h-4 w-4" />
                                                 <span>
-                                                    {post._count.replies}{" "}
+                                                    {post._count?.replies ??
+                                                        post.replies?.length ??
+                                                        0}{" "}
                                                     replies
                                                 </span>
                                             </div>
