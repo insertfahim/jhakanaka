@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import AvatarSelector from "@/components/AvatarSelector";
 
 export default function EditProfile() {
     const { data: session, status } = useSession();
@@ -18,6 +19,7 @@ export default function EditProfile() {
         interests: "",
         showCgpa: false,
         isProfilePublic: true,
+        avatar: "",
     });
 
     useEffect(() => {
@@ -48,6 +50,7 @@ export default function EditProfile() {
                         : profileData.interests || "",
                     showCgpa: profileData.showCgpa || false,
                     isProfilePublic: profileData.isProfilePublic !== false,
+                    avatar: profileData.avatar || "",
                 });
             }
         } catch (error) {
@@ -107,6 +110,7 @@ export default function EditProfile() {
                     interests: formData.interests,
                     showCgpa: formData.showCgpa,
                     isProfilePublic: formData.isProfilePublic,
+                    avatar: formData.avatar,
                 }),
             });
 
@@ -163,6 +167,19 @@ export default function EditProfile() {
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleSubmit}>
+                        <div>
+                            <AvatarSelector
+                                currentAvatar={formData.avatar}
+                                onAvatarChange={(avatarUrl) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        avatar: avatarUrl,
+                                    }))
+                                }
+                                userName={session?.user?.name}
+                            />
+                        </div>
+
                         <div>
                             <label
                                 htmlFor="major"

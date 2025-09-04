@@ -36,29 +36,44 @@ export async function GET(
         }
 
         // Check if user has access to this file
-        // This is a simplified check - in production, you might want more sophisticated access control
-        const messageWithFile = await prisma.message.findFirst({
+        // Check if this file is the user's avatar
+        const userWithAvatar = await prisma.user.findFirst({
             where: {
-                fileUrl: `/api/files/${filename}`,
+                id: session.user.id,
+                avatar: `/api/files/${filename}`,
             },
-            include: {
-                group: {
-                    include: {
-                        members: {
-                            where: {
-                                userId: session.user.id,
+        });
+
+        if (userWithAvatar) {
+            // User has access to their own avatar
+        } else {
+            // Check if user has access through messages
+            const messageWithFile = await prisma.message.findFirst({
+                where: {
+                    fileUrl: `/api/files/${filename}`,
+                },
+                include: {
+                    group: {
+                        include: {
+                            members: {
+                                where: {
+                                    userId: session.user.id,
+                                },
                             },
                         },
                     },
                 },
-            },
-        });
+            });
 
-        if (!messageWithFile || messageWithFile.group.members.length === 0) {
-            return NextResponse.json(
-                { error: "Access denied" },
-                { status: 403 }
-            );
+            if (
+                !messageWithFile ||
+                messageWithFile.group.members.length === 0
+            ) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
         }
 
         // Read and serve the file

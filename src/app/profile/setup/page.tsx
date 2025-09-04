@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import AvatarSelector from "@/components/AvatarSelector";
 
 export default function ProfileSetup() {
     const { data: session, status } = useSession();
@@ -17,6 +18,7 @@ export default function ProfileSetup() {
         skills: "",
         interests: "",
         showCgpa: false,
+        avatar: "",
     });
 
     const checkExistingProfile = useCallback(async () => {
@@ -91,6 +93,7 @@ export default function ProfileSetup() {
                     skills: formData.skills,
                     interests: formData.interests,
                     showCgpa: formData.showCgpa,
+                    avatar: formData.avatar,
                 }),
             });
 
@@ -142,6 +145,19 @@ export default function ProfileSetup() {
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                 <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
                     <form className="space-y-6" onSubmit={handleSubmit}>
+                        <div>
+                            <AvatarSelector
+                                currentAvatar={formData.avatar}
+                                onAvatarChange={(avatarUrl) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        avatar: avatarUrl,
+                                    }))
+                                }
+                                userName={session?.user?.name}
+                            />
+                        </div>
+
                         <div>
                             <label
                                 htmlFor="major"

@@ -28,6 +28,7 @@ export async function PUT(request: NextRequest) {
             interests,
             showCgpa,
             isProfilePublic,
+            avatar,
         } = body;
 
         // Process arrays
@@ -88,6 +89,7 @@ export async function PUT(request: NextRequest) {
             showCgpa: showCgpa || false,
             isProfilePublic:
                 isProfilePublic !== undefined ? isProfilePublic : true,
+            avatar: avatar || null,
         });
 
         const updatedUser = await prisma.user.update({
@@ -104,6 +106,7 @@ export async function PUT(request: NextRequest) {
                 showCgpa: showCgpa || false,
                 isProfilePublic:
                     isProfilePublic !== undefined ? isProfilePublic : true,
+                avatar: avatar || null,
             },
         });
 
@@ -163,6 +166,7 @@ export async function GET() {
                 interests: true,
                 showCgpa: true,
                 isProfilePublic: true,
+                avatar: true,
                 createdAt: true,
             },
         });

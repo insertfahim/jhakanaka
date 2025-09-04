@@ -1,6 +1,7 @@
-import { NextAuthOptions, DefaultSession } from "next-auth";
+import { NextAuthOptions, DefaultSession, Session } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { JWT } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 
 // BRACU email domains
@@ -20,7 +21,7 @@ export const authOptions: NextAuthOptions = {
     adapter: PrismaAdapter(prisma),
     secret: process.env.NEXTAUTH_SECRET,
     debug: process.env.NODE_ENV === "development",
-    
+
     providers: [
         CredentialsProvider({
             name: "credentials",
@@ -156,13 +157,13 @@ export const authOptions: NextAuthOptions = {
         strategy: "jwt",
     },
     callbacks: {
-        async jwt({ token, user }) {
+                async jwt({ token, user }: { token: JWT; user?: (import("next-auth").User) }) {
             if (user && "studentId" in user) {
                 token.studentId = user.studentId as string;
             }
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }: { session: Session; token: JWT }) {
             if (session.user) {
                 session.user.id = token.sub!;
                 if (token.studentId) {

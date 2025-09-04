@@ -574,30 +574,35 @@ export default function UserDiscovery({ onSendMessage }: UserDiscoveryProps) {
                             )}
 
                             {/* Study Groups */}
-                            {selectedUser.groups.length > 0 && (
-                                <div>
-                                    <h3 className="font-medium text-gray-900 mb-2">
-                                        Study Groups
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {selectedUser.groups.map((group) => (
-                                            <div
-                                                key={group.id}
-                                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                                            >
-                                                <div>
-                                                    <p className="font-medium">
-                                                        {group.name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-600">
-                                                        {group.courseCode}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
+                            {selectedUser.groups &&
+                                selectedUser.groups.length > 0 && (
+                                    <div>
+                                        <h3 className="font-medium text-gray-900 mb-2">
+                                            Study Groups
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {selectedUser.groups.map(
+                                                (group) => (
+                                                    <div
+                                                        key={group.id}
+                                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                                                    >
+                                                        <div>
+                                                            <p className="font-medium">
+                                                                {group.name}
+                                                            </p>
+                                                            <p className="text-sm text-gray-600">
+                                                                {
+                                                                    group.courseCode
+                                                                }
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
                             {/* Stats */}
                             <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
