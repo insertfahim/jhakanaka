@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { X, Camera } from "lucide-react";
+import ImageKit from "imagekit";
 
 interface AvatarSelectorProps {
     currentAvatar?: string;
@@ -64,12 +65,15 @@ export default function AvatarSelector({
         try {
             const authResponse = await fetch("/api/imagekit/auth");
             if (!authResponse.ok) {
-                throw new Error("Failed to get ImageKit authentication parameters");
+                throw new Error(
+                    "Failed to get ImageKit authentication parameters"
+                );
             }
             const authParams = await authResponse.json();
 
             const imagekit = new ImageKit({
                 publicKey: "public_uYn8YrnqRSiXK8cAWLvdu8BufSA=",
+                privateKey: "",
                 urlEndpoint: "https://ik.imagekit.io/faahim06",
             });
 
