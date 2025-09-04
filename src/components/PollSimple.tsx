@@ -31,18 +31,19 @@ import {
 interface PollOption {
     id: string;
     text: string;
-    votes: number;
+    _count: {
+        votes: number;
+    };
 }
 
 interface Poll {
     id: string;
     title: string;
     description: string;
+    type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "YES_NO";
     isAnonymous: boolean;
-    isMultipleChoice: boolean;
-    allowAddOptions: boolean;
     isClosed: boolean;
-    closesAt: string | null;
+    expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
     user: {
@@ -54,6 +55,7 @@ interface Poll {
     _count: {
         votes: number;
     };
+    votes?: { optionId: string }[]; // User's votes
 }
 
 interface PollProps {
@@ -67,6 +69,8 @@ export default function Poll({ groupId, groupName }: PollProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
     const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
+    const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+    const [isVoting, setIsVoting] = useState(false);
 
     // Form states for creating polls
     const [pollForm, setPollForm] = useState({
@@ -74,9 +78,8 @@ export default function Poll({ groupId, groupName }: PollProps) {
         description: "",
         options: ["", ""], // Start with 2 options
         isAnonymous: false,
-        isMultipleChoice: false,
-        allowAddOptions: false,
-        closesAt: "",
+        type: "SINGLE_CHOICE" as "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "YES_NO",
+        expiresAt: "",
     });
 
     const fetchPolls = useCallback(async () => {
@@ -117,8 +120,8 @@ export default function Poll({ groupId, groupName }: PollProps) {
                 body: JSON.stringify({
                     ...pollForm,
                     options,
-                    closesAt: pollForm.closesAt
-                        ? new Date(pollForm.closesAt).toISOString()
+                    expiresAt: pollForm.expiresAt
+                        ? new Date(pollForm.expiresAt).toISOString()
                         : null,
                 }),
             });
@@ -132,9 +135,8 @@ export default function Poll({ groupId, groupName }: PollProps) {
                     description: "",
                     options: ["", ""],
                     isAnonymous: false,
-                    isMultipleChoice: false,
-                    allowAddOptions: false,
-                    closesAt: "",
+                    type: "SINGLE_CHOICE",
+                    expiresAt: "",
                 });
             }
         } catch (error) {
@@ -188,14 +190,17 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
     const isPollClosed = (poll: Poll) => {
         if (poll.isClosed) return true;
-        if (poll.closesAt) {
-            return new Date(poll.closesAt) < new Date();
+        if (poll.expiresAt) {
+            return new Date(poll.expiresAt) < new Date();
         }
         return false;
     };
 
     const getTotalVotes = (poll: Poll) => {
-        return poll.options.reduce((total, option) => total + option.votes, 0);
+        return poll.options.reduce(
+            (total, option) => total + option._count.votes,
+            0
+        );
     };
 
     const addOptionField = () => {
@@ -221,6 +226,62 @@ export default function Poll({ groupId, groupName }: PollProps) {
                 options: prev.options.filter((_, i) => i !== index),
             }));
         }
+    };
+
+    const handleVoteSelection = (optionId: string, isSelected: boolean) => {
+        if (!selectedPoll) return;
+
+        if (selectedPoll.type === "MULTIPLE_CHOICE") {
+            if (isSelected) {
+                setSelectedOptions((prev) => [...prev, optionId]);
+            } else {
+                setSelectedOptions((prev) =>
+                    prev.filter((id) => id !== optionId)
+                );
+            }
+        } else {
+            // Single choice or Yes/No
+            setSelectedOptions(isSelected ? [optionId] : []);
+        }
+    };
+
+    const handleSubmitVote = async () => {
+        if (!selectedPoll || selectedOptions.length === 0 || isVoting) return;
+
+        setIsVoting(true);
+        try {
+            const response = await fetch(
+                `/api/groups/${groupId}/polls/${selectedPoll.id}/vote`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        optionIds: selectedOptions,
+                    }),
+                }
+            );
+
+            if (response.ok) {
+                // Refresh polls to get updated vote counts
+                await fetchPolls();
+                setSelectedPoll(null);
+                setSelectedOptions([]);
+            } else {
+                const error = await response.json();
+                alert(error.error || "Failed to submit vote");
+            }
+        } catch (error) {
+            console.error("Error submitting vote:", error);
+            alert("Failed to submit vote. Please try again.");
+        } finally {
+            setIsVoting(false);
+        }
+    };
+
+    const hasUserVoted = (poll: Poll) => {
+        return poll.votes && poll.votes.length > 0;
     };
 
     if (isLoading) {
@@ -340,89 +401,126 @@ export default function Poll({ groupId, groupName }: PollProps) {
                             </div>
 
                             <div>
-                                <Label htmlFor="closes-at">
+                                <Label htmlFor="expires-at">
                                     Closing Date (Optional)
                                 </Label>
                                 <Input
-                                    id="closes-at"
+                                    id="expires-at"
                                     type="datetime-local"
-                                    value={pollForm.closesAt}
+                                    value={pollForm.expiresAt}
                                     onChange={(e) =>
                                         setPollForm((prev) => ({
                                             ...prev,
-                                            closesAt: e.target.value,
+                                            expiresAt: e.target.value,
                                         }))
                                     }
                                 />
                             </div>
 
-                            <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="multiple-choice"
-                                        checked={pollForm.isMultipleChoice}
-                                        onChange={(e) =>
-                                            setPollForm((prev) => ({
-                                                ...prev,
-                                                isMultipleChoice:
-                                                    e.target.checked,
-                                            }))
-                                        }
-                                        className="rounded"
-                                    />
-                                    <Label
-                                        htmlFor="multiple-choice"
-                                        className="flex items-center space-x-1"
-                                    >
-                                        <Vote className="h-4 w-4" />
-                                        <span>Allow multiple selections</span>
-                                    </Label>
+                            <div className="space-y-4">
+                                <div>
+                                    <Label>Poll Type</Label>
+                                    <div className="flex items-center space-x-6">
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="radio"
+                                                id="single-choice-simple"
+                                                name="poll-type-simple"
+                                                value="SINGLE_CHOICE"
+                                                checked={
+                                                    pollForm.type ===
+                                                    "SINGLE_CHOICE"
+                                                }
+                                                onChange={(e) =>
+                                                    setPollForm((prev) => ({
+                                                        ...prev,
+                                                        type: e.target.value as
+                                                            | "SINGLE_CHOICE"
+                                                            | "MULTIPLE_CHOICE"
+                                                            | "YES_NO",
+                                                    }))
+                                                }
+                                                className="rounded"
+                                            />
+                                            <Label htmlFor="single-choice-simple">
+                                                Single Choice
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="radio"
+                                                id="multiple-choice-simple"
+                                                name="poll-type-simple"
+                                                value="MULTIPLE_CHOICE"
+                                                checked={
+                                                    pollForm.type ===
+                                                    "MULTIPLE_CHOICE"
+                                                }
+                                                onChange={(e) =>
+                                                    setPollForm((prev) => ({
+                                                        ...prev,
+                                                        type: e.target.value as
+                                                            | "SINGLE_CHOICE"
+                                                            | "MULTIPLE_CHOICE"
+                                                            | "YES_NO",
+                                                    }))
+                                                }
+                                                className="rounded"
+                                            />
+                                            <Label htmlFor="multiple-choice-simple">
+                                                Multiple Choice
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="radio"
+                                                id="yes-no-simple"
+                                                name="poll-type-simple"
+                                                value="YES_NO"
+                                                checked={
+                                                    pollForm.type === "YES_NO"
+                                                }
+                                                onChange={(e) =>
+                                                    setPollForm((prev) => ({
+                                                        ...prev,
+                                                        type: e.target.value as
+                                                            | "SINGLE_CHOICE"
+                                                            | "MULTIPLE_CHOICE"
+                                                            | "YES_NO",
+                                                    }))
+                                                }
+                                                className="rounded"
+                                            />
+                                            <Label htmlFor="yes-no-simple">
+                                                Yes/No
+                                            </Label>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="anonymous"
-                                        checked={pollForm.isAnonymous}
-                                        onChange={(e) =>
-                                            setPollForm((prev) => ({
-                                                ...prev,
-                                                isAnonymous: e.target.checked,
-                                            }))
-                                        }
-                                        className="rounded"
-                                    />
-                                    <Label
-                                        htmlFor="anonymous"
-                                        className="flex items-center space-x-1"
-                                    >
-                                        <EyeOff className="h-4 w-4" />
-                                        <span>Anonymous poll</span>
-                                    </Label>
-                                </div>
-
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="allow-add-options"
-                                        checked={pollForm.allowAddOptions}
-                                        onChange={(e) =>
-                                            setPollForm((prev) => ({
-                                                ...prev,
-                                                allowAddOptions:
-                                                    e.target.checked,
-                                            }))
-                                        }
-                                        className="rounded"
-                                    />
-                                    <Label
-                                        htmlFor="allow-add-options"
-                                        className="flex items-center space-x-1"
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                        <span>Allow others to add options</span>
-                                    </Label>
+                                <div className="flex items-center space-x-4">
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="anonymous-simple"
+                                            checked={pollForm.isAnonymous}
+                                            onChange={(e) =>
+                                                setPollForm((prev) => ({
+                                                    ...prev,
+                                                    isAnonymous:
+                                                        e.target.checked,
+                                                }))
+                                            }
+                                            className="rounded"
+                                        />
+                                        <Label
+                                            htmlFor="anonymous-simple"
+                                            className="flex items-center space-x-1"
+                                        >
+                                            <EyeOff className="h-4 w-4" />
+                                            <span>Anonymous poll</span>
+                                        </Label>
+                                    </div>
                                 </div>
                             </div>
 
