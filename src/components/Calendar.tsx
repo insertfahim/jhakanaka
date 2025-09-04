@@ -613,7 +613,9 @@ export default function Calendar({ groupId, groupName }: CalendarProps) {
                                             <div className="flex items-center space-x-2 mt-2">
                                                 <Users className="h-3 w-3 text-gray-400" />
                                                 <span className="text-xs text-gray-500">
-                                                    {event._count.rsvps}{" "}
+                                                    {event._count?.rsvps ??
+                                                        event.rsvps?.length ??
+                                                        0}{" "}
                                                     attending
                                                 </span>
                                             </div>
@@ -790,7 +792,11 @@ export default function Calendar({ groupId, groupName }: CalendarProps) {
 
                                 <div>
                                     <h4 className="font-medium text-gray-900 mb-2">
-                                        Attendees ({selectedEvent._count.rsvps})
+                                        Attendees (
+                                        {selectedEvent._count?.rsvps ??
+                                            selectedEvent.rsvps?.length ??
+                                            0}
+                                        )
                                     </h4>
                                     <div className="space-y-2 max-h-32 overflow-y-auto">
                                         {selectedEvent.rsvps.map((rsvp) => (

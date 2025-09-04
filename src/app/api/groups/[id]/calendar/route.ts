@@ -169,6 +169,11 @@ export async function POST(
                     },
                 },
                 rsvps: true,
+                _count: {
+                    select: {
+                        rsvps: true,
+                    },
+                },
             },
         });
 
