@@ -295,6 +295,7 @@ model Poll {
   type        PollType
   isAnonymous Boolean  @default(false)
   isClosed    Boolean  @default(false)
+  allowAddOptions Boolean @default(true)
   expiresAt   DateTime?
 
   userId    String

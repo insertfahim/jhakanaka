@@ -45,6 +45,7 @@ interface Poll {
     type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "YES_NO";
     isAnonymous: boolean;
     isClosed: boolean;
+    allowAddOptions: boolean;
     expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
@@ -81,6 +82,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
         description: "",
         options: ["", ""], // Start with 2 options
         isAnonymous: false,
+        allowAddOptions: true,
         type: "SINGLE_CHOICE" as "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "YES_NO",
         expiresAt: "",
     });
@@ -138,6 +140,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                     description: "",
                     options: ["", ""],
                     isAnonymous: false,
+                    allowAddOptions: true,
                     type: "SINGLE_CHOICE",
                     expiresAt: "",
                 });
@@ -551,6 +554,28 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                         >
                                             <EyeOff className="h-4 w-4" />
                                             <span>Anonymous poll</span>
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id="allow-add-options"
+                                            checked={pollForm.allowAddOptions}
+                                            onCheckedChange={(checked) =>
+                                                setPollForm((prev) => ({
+                                                    ...prev,
+                                                    allowAddOptions:
+                                                        checked as boolean,
+                                                }))
+                                            }
+                                        />
+                                        <Label
+                                            htmlFor="allow-add-options"
+                                            className="flex items-center space-x-1"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            <span>
+                                                Allow users to add options
+                                            </span>
                                         </Label>
                                     </div>
                                 </div>

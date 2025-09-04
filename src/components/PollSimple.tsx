@@ -84,6 +84,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
         description: "",
         options: ["", ""], // Start with 2 options
         isAnonymous: false,
+        allowAddOptions: true,
         type: "SINGLE_CHOICE" as "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "YES_NO",
         expiresAt: "",
     });
@@ -141,6 +142,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                     description: "",
                     options: ["", ""],
                     isAnonymous: false,
+                    allowAddOptions: true,
                     type: "SINGLE_CHOICE",
                     expiresAt: "",
                 });
@@ -527,6 +529,30 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                             <span>Anonymous poll</span>
                                         </Label>
                                     </div>
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="allow-add-options-simple"
+                                            checked={pollForm.allowAddOptions}
+                                            onChange={(e) =>
+                                                setPollForm((prev) => ({
+                                                    ...prev,
+                                                    allowAddOptions:
+                                                        e.target.checked,
+                                                }))
+                                            }
+                                            className="rounded"
+                                        />
+                                        <Label
+                                            htmlFor="allow-add-options-simple"
+                                            className="flex items-center space-x-1"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            <span>
+                                                Allow users to add options
+                                            </span>
+                                        </Label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -629,13 +655,13 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                     {getTotalVotes(poll)} votes
                                                 </span>
                                             </div>
-                                            {poll.closesAt && (
+                                            {poll.expiresAt && (
                                                 <div className="flex items-center space-x-1">
                                                     <Calendar className="h-4 w-4" />
                                                     <span>
                                                         Closes{" "}
                                                         {new Date(
-                                                            poll.closesAt
+                                                            poll.expiresAt
                                                         ).toLocaleDateString()}
                                                     </span>
                                                 </div>

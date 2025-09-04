@@ -123,8 +123,15 @@ export async function POST(
         }
 
         const body = await request.json();
-        const { title, description, type, options, isAnonymous, expiresAt } =
-            body;
+        const {
+            title,
+            description,
+            type,
+            options,
+            isAnonymous,
+            allowAddOptions,
+            expiresAt,
+        } = body;
 
         if (!title || !options || options.length < 2) {
             return NextResponse.json(
@@ -147,6 +154,8 @@ export async function POST(
                 description,
                 type,
                 isAnonymous: isAnonymous || false,
+                allowAddOptions:
+                    allowAddOptions !== undefined ? allowAddOptions : true,
                 expiresAt: expiresAt ? new Date(expiresAt) : null,
                 userId: session.user.id,
                 groupId,
