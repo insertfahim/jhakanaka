@@ -62,20 +62,24 @@ export default function AvatarSelector({
         setUploading(true);
 
         try {
-            const formData = new FormData();
-            formData.append("file", file);
+            const authResponse = await fetch("/api/imagekit/auth");
+            if (!authResponse.ok) {
+                throw new Error("Failed to get ImageKit authentication parameters");
+            }
+            const authParams = await authResponse.json();
 
-            const response = await fetch("/api/upload", {
-                method: "POST",
-                body: formData,
+            const imagekit = new ImageKit({
+                publicKey: "public_uYn8YrnqRSiXK8cAWLvdu8BufSA=",
+                urlEndpoint: "https://ik.imagekit.io/faahim06",
             });
 
-            if (!response.ok) {
-                throw new Error("Upload failed");
-            }
+            const uploadResult = await imagekit.upload({
+                file,
+                fileName: file.name,
+                ...authParams,
+            });
 
-            const data = await response.json();
-            const avatarUrl = data.fileUrl;
+            const avatarUrl = uploadResult.url;
             setSelectedAvatar(avatarUrl);
             onAvatarChange(avatarUrl);
         } catch (error) {
@@ -170,11 +174,17 @@ export default function AvatarSelector({
                 </div>
             </div>
 
-            {/* Custom Upload has been disabled for Vercel deployment */}
-        </div>
-    );
-}
-ding}
+            {/* Custom Upload */}
+            <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                    Or Upload Your Own
+                </h4>
+                <div className="flex items-center space-x-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
                         className="flex items-center space-x-2"
                     >
                         <Camera className="w-4 h-4" />
