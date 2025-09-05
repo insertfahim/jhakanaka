@@ -206,7 +206,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
     const getTotalVotes = (poll: Poll) => {
         return poll.options.reduce(
-            (total, option) => total + option._count.votes,
+            (total, option) => total + (option._count?.votes || 0),
             0
         );
     };
@@ -707,7 +707,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {poll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(poll) > 0
-                                                ? (option._count.votes /
+                                                ? ((option._count?.votes || 0) /
                                                       getTotalVotes(poll)) *
                                                   100
                                                 : 0;
@@ -722,8 +722,9 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option._count.votes} (
-                                                        {percentage.toFixed(1)}
+                                                        {option._count?.votes ||
+                                                            0}{" "}
+                                                        ({percentage.toFixed(1)}
                                                         %)
                                                     </span>
                                                 </div>
@@ -795,7 +796,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {selectedPoll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(selectedPoll) > 0
-                                                ? (option._count.votes /
+                                                ? ((option._count?.votes || 0) /
                                                       getTotalVotes(
                                                           selectedPoll
                                                       )) *
@@ -812,8 +813,9 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option._count.votes} (
-                                                        {percentage.toFixed(1)}
+                                                        {option._count?.votes ||
+                                                            0}{" "}
+                                                        ({percentage.toFixed(1)}
                                                         %)
                                                     </span>
                                                 </div>

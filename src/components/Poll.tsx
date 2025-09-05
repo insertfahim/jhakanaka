@@ -71,6 +71,8 @@ export default function Poll({ groupId, groupName }: PollProps) {
     const [polls, setPolls] = useState<Poll[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showCreateDialog, setShowCreateDialog] = useState(false);
+    const [isCreatingPoll, setIsCreatingPoll] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
     const [selectedPoll, setSelectedPoll] = useState<Poll | null>(null);
     const [newOptionText, setNewOptionText] = useState("");
     const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
@@ -108,12 +110,15 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
     const handleCreatePoll = async () => {
         try {
+            setCreateError(null);
+            setIsCreatingPoll(true);
+
             const options = pollForm.options.filter(
                 (option) => option.trim() !== ""
             );
 
             if (options.length < 2) {
-                alert("Please provide at least 2 options");
+                setCreateError("Please provide at least 2 options");
                 return;
             }
 
@@ -144,9 +149,15 @@ export default function Poll({ groupId, groupName }: PollProps) {
                     type: "SINGLE_CHOICE",
                     expiresAt: "",
                 });
+            } else {
+                const errorData = await response.json();
+                setCreateError(errorData.error || "Failed to create poll");
             }
         } catch (error) {
             console.error("Error creating poll:", error);
+            setCreateError("An unexpected error occurred. Please try again.");
+        } finally {
+            setIsCreatingPoll(false);
         }
     };
 
@@ -235,7 +246,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
     const getTotalVotes = (poll: Poll) => {
         return poll.options.reduce(
-            (total, option) => total + option._count.votes,
+            (total, option) => total + (option._count?.votes || 0),
             0
         );
     };
@@ -342,7 +353,22 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
                 <Dialog
                     open={showCreateDialog}
-                    onOpenChange={setShowCreateDialog}
+                    onOpenChange={(open) => {
+                        setShowCreateDialog(open);
+                        if (!open) {
+                            // Reset form and error state when dialog closes
+                            setCreateError(null);
+                            setPollForm({
+                                title: "",
+                                description: "",
+                                options: ["", ""],
+                                isAnonymous: false,
+                                allowAddOptions: true,
+                                type: "SINGLE_CHOICE",
+                                expiresAt: "",
+                            });
+                        }
+                    }}
                 >
                     <DialogTrigger asChild>
                         <Button>
@@ -358,7 +384,18 @@ export default function Poll({ groupId, groupName }: PollProps) {
                             </DialogDescription>
                         </DialogHeader>
 
-                        <div className="space-y-4">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleCreatePoll();
+                            }}
+                            className="space-y-4"
+                        >
+                            {createError && (
+                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                                    {createError}
+                                </div>
+                            )}
                             <div>
                                 <Label htmlFor="poll-title">Question</Label>
                                 <Input
@@ -583,23 +620,27 @@ export default function Poll({ groupId, groupName }: PollProps) {
 
                             <div className="flex justify-end space-x-2">
                                 <Button
+                                    type="button"
                                     variant="outline"
                                     onClick={() => setShowCreateDialog(false)}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
-                                    onClick={handleCreatePoll}
+                                    type="submit"
                                     disabled={
+                                        isCreatingPoll ||
                                         !pollForm.title ||
                                         pollForm.options.filter((o) => o.trim())
                                             .length < 2
                                     }
                                 >
-                                    Create Poll
+                                    {isCreatingPoll
+                                        ? "Creating..."
+                                        : "Create Poll"}
                                 </Button>
                             </div>
-                        </div>
+                        </form>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -732,7 +773,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {poll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(poll) > 0
-                                                ? (option._count.votes /
+                                                ? ((option._count?.votes || 0) /
                                                       getTotalVotes(poll)) *
                                                   100
                                                 : 0;
@@ -747,8 +788,9 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option._count.votes} (
-                                                        {percentage.toFixed(1)}
+                                                        {option._count?.votes ||
+                                                            0}{" "}
+                                                        ({percentage.toFixed(1)}
                                                         %)
                                                     </span>
                                                 </div>
@@ -908,7 +950,7 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                     {selectedPoll.options.map((option) => {
                                         const percentage =
                                             getTotalVotes(selectedPoll) > 0
-                                                ? (option._count.votes /
+                                                ? ((option._count?.votes || 0) /
                                                       getTotalVotes(
                                                           selectedPoll
                                                       )) *
@@ -925,8 +967,9 @@ export default function Poll({ groupId, groupName }: PollProps) {
                                                         {option.text}
                                                     </span>
                                                     <span className="text-sm text-gray-500">
-                                                        {option._count.votes} (
-                                                        {percentage.toFixed(1)}
+                                                        {option._count?.votes ||
+                                                            0}{" "}
+                                                        ({percentage.toFixed(1)}
                                                         %)
                                                     </span>
                                                 </div>
